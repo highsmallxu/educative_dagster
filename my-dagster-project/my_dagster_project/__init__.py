@@ -1,52 +1,24 @@
 from dagster import (
-    load_assets_from_package_module,
     Definitions,
     define_asset_job,
-    ScheduleDefinition,
 )
-from my_dagster_project import assets
 from dagster_gcp_pandas import bigquery_pandas_io_manager
 from dagster_gcp import bigquery_resource
 from dagster import (
     asset,
     MetadataValue,
-    DailyPartitionsDefinition,
-    op,
-    job,
     schedule,
     ScheduleEvaluationContext,
     RunRequest,
-    FreshnessPolicy,
-    AssetSelection
+    AssetSelection,
 )
-
-# defs = Definitions(
-#     assets=load_assets_from_package_module(assets),
-#     schedules=[
-#         ScheduleDefinition(
-#             job=define_asset_job(name="exchange_rate_ingestion", selection="*"),
-#             cron_schedule="* * * * *",
-#         ),
-#         # ScheduleDefinition(
-#         #     job=define_asset_job(name="exchange_rate_ingestion", selection="*"),
-#         #     cron_schedule="*/5 * * * *",
-#         # ),
-#     ],
-#     resources={
-#         "io_manager": bigquery_pandas_io_manager.configured(
-#             {
-#                 "project": "sanbox-368220",
-#                 "dataset": "dagster"
-#             }
-#         )
-#     }
-# )
 import requests
 import pandas as pd
 import logging
 
 FROM_CUR = "EUR"
 TO_CUR = "USD"
+
 
 @asset(io_manager_key="bq_io_manager", group_name="exchange_rate_fact")
 def exchange_rate_staging(context):
@@ -70,7 +42,11 @@ def exchange_rate_staging(context):
     )
 
 
-@asset(io_manager_def=None, required_resource_keys={"bigquery"}, group_name="exchange_rate_fact")
+@asset(
+    io_manager_def=None,
+    required_resource_keys={"bigquery"},
+    group_name="exchange_rate_fact",
+)
 def exchange_rate(context, exchange_rate_staging):
     with open("my_dagster_project/sql/exchange_rate.sql") as f:
         query = f.read()
@@ -78,7 +54,12 @@ def exchange_rate(context, exchange_rate_staging):
         (query),
     ).result()
 
-@asset(io_manager_def=None, required_resource_keys={"bigquery"}, group_name="exchange_rate_agg")
+
+@asset(
+    io_manager_def=None,
+    required_resource_keys={"bigquery"},
+    group_name="exchange_rate_agg",
+)
 def exchange_rate_report(context, exchange_rate):
     logging.error("report")
     with open("my_dagster_project/sql/exchange_rate_report.sql") as f:
@@ -87,16 +68,23 @@ def exchange_rate_report(context, exchange_rate):
         (query),
     ).result()
 
+
 @schedule(
-    job=define_asset_job(name="exchange_rate_job", selection=AssetSelection.groups("exchange_rate_fact")),
+    job=define_asset_job(
+        name="exchange_rate_job", selection=AssetSelection.groups("exchange_rate_fact")
+    ),
     cron_schedule="* * * * 1-5",
 )
 def exchange_rate_schedule(context: ScheduleEvaluationContext):
     scheduled_date = context.scheduled_execution_time.strftime("%Y-%m-%d")
     return RunRequest(tags={"date": scheduled_date})
 
+
 @schedule(
-    job=define_asset_job(name="exchange_rate_report_job", selection=AssetSelection.groups("exchange_rate_agg")),
+    job=define_asset_job(
+        name="exchange_rate_report_job",
+        selection=AssetSelection.groups("exchange_rate_agg"),
+    ),
     cron_schedule="*/5 * * * 1-5",
 )
 def exchange_rate_report_schedule(context: ScheduleEvaluationContext):
@@ -105,7 +93,7 @@ def exchange_rate_report_schedule(context: ScheduleEvaluationContext):
 
 
 defs = Definitions(
-    assets=[exchange_rate_staging, exchange_rate,exchange_rate_report],
+    assets=[exchange_rate_staging, exchange_rate, exchange_rate_report],
     schedules=[exchange_rate_schedule, exchange_rate_report_schedule],
     resources={
         "bq_io_manager": bigquery_pandas_io_manager.configured(
