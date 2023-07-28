@@ -15,10 +15,18 @@ from dagster import (
 import requests
 import pandas as pd
 import logging
+import json
+import os
+
+# setup GCP credentials 
+gcp_auth_key = <<gcp_auth>>
+with open('auth.json', 'w') as outfile:
+    json.dump(gcp_auth_key, outfile)
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "auth.json"
+PROJECT_ID = json.load(open("auth.json", "rb"))["quota_project_id"]
 
 FROM_CUR = "EUR"
 TO_CUR = "USD"
-
 
 @asset(io_manager_key="bq_io_manager", group_name="exchange_rate_fact")
 def exchange_rate_staging(context):
@@ -97,11 +105,11 @@ defs = Definitions(
     schedules=[exchange_rate_schedule, exchange_rate_report_schedule],
     resources={
         "bq_io_manager": bigquery_pandas_io_manager.configured(
-            {"project": "sanbox-368220", "dataset": "dagster"}
+            {"project": PROJECT_ID, "dataset": "dagster"}
         ),
         "bigquery": bigquery_resource.configured(
             {
-                "project": "sanbox-368220",
+                "project": PROJECT_ID,
             }
         ),
     },

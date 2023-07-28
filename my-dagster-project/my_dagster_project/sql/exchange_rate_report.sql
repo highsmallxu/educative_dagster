@@ -1,6 +1,6 @@
 MERGE INTO dagster.exchange_rate_report AS dst
 USING (
-    SELECT TIMESTAMP_TRUNC(timestamp, DAY) as date, from_cur, to_cur, AVG(rate) as avg_rate
+    SELECT date, from_cur, to_cur, AVG(rate) as avg_rate
     FROM dagster.exchange_rate
     GROUP BY 1,2,3
 ) AS src
