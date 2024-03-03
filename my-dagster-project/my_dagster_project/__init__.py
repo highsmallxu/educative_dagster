@@ -81,7 +81,7 @@ def exchange_rate_report(context, exchange_rate):
     job=define_asset_job(
         name="exchange_rate_job", selection=AssetSelection.groups("exchange_rate_fact")
     ),
-    cron_schedule="* * * * 1-5",
+    cron_schedule="* * * * *",
 )
 def exchange_rate_schedule(context: ScheduleEvaluationContext):
     scheduled_date = context.scheduled_execution_time.strftime("%Y-%m-%d")
@@ -93,7 +93,7 @@ def exchange_rate_schedule(context: ScheduleEvaluationContext):
         name="exchange_rate_report_job",
         selection=AssetSelection.groups("exchange_rate_agg"),
     ),
-    cron_schedule="*/5 * * * 1-5",
+    cron_schedule="*/5 * * * *",
 )
 def exchange_rate_report_schedule(context: ScheduleEvaluationContext):
     scheduled_date = context.scheduled_execution_time.strftime("%Y-%m-%d")
